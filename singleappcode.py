@@ -2,6 +2,13 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import io
+import zipfile
+import os
+import tempfile
+import io
+import streamlit as st
+import pandas as pd
+from fpdf import FPDF
 
 # Define the parameter descriptions
 parameter_descriptions = {
@@ -85,7 +92,7 @@ def process_data(uploaded_file, partner_id, buffer_percent, grade, district_digi
 
     return data_expanded, data_mapped
 
-def main():
+def id_generator:
     st.title("Student ID Generator")
     
     uploaded_file = st.file_uploader("Upload an Excel file", type=["xlsx"])
@@ -130,17 +137,6 @@ def main():
             
             st.download_button(label="Download Student IDs Excel", data=towrite1, file_name="Student_Ids.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
             st.download_button(label="Download Mapped Student IDs Excel", data=towrite2, file_name="Student_Ids_Mapped.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-
-if __name__ == "__main__":
-    main()
-
-import zipfile
-import os
-import tempfile
-import io
-import streamlit as st
-import pandas as pd
-from fpdf import FPDF
 
 # Function to create the attendance list PDF
 def create_attendance_pdf(pdf, column_widths, column_names, image_path, info_values, df):
