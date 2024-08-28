@@ -2,3 +2,4 @@ fpdf
 openpyxl
 pandas
 streamlit
+xlsxwriter
