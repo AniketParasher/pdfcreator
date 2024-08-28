@@ -235,12 +235,12 @@ def main():
     st.title("Hello! This is CGs Attendance List PDF Generator")
 
     # Upload Excel and Image files
-    excel_file = st.file_uploader("Upload Excel file", type=["xlsx"])
+    excel_file = data_mapped
     image_file = st.file_uploader("Upload Image file", type=["png", "jpg", "jpeg"])
 
     if excel_file and image_file:
         # Read Excel file
-        df = pd.read_excel(data_mapped)
+        df = pd.read_excel(excel_file)
 
         # Process data
         grouping_columns = [col for col in df.columns if col not in ['STUDENT ID'] and df[col].notna().any()]
