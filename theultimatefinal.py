@@ -85,7 +85,7 @@ def create_attendance_pdf(pdf, column_widths, column_names, image_path, info_val
 
         # Fill in STUDENT ID column
         student_id = student_ids[i]
-        pdf.cell(column_widths['STUDENT ID'], table_cell_height, student_id, border=1, align='C')
+        pdf.cell(column_widths['STUDENT ID'], table_cell_height, str(student_id), border=1, align='C')
 
         # Fill in remaining columns with empty values
         for col_name in column_names[2:]:  # Skip first two columns
