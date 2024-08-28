@@ -73,7 +73,7 @@ def create_attendance_pdf(pdf, column_widths, column_names, image_path, info_val
     pdf.ln(table_cell_height)
 
     # Table Rows (based on student_count)
-    pdf.set_font('Arial', '', 10)
+    pdf.set_font('Arial', '', 7)
     student_count = info_values.get('student_count', 0)  # Use 0 if 'student_count' is missing or not found
 
     # Fill in the student IDs for the selected school code
