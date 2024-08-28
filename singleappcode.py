@@ -2,10 +2,6 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import io
-import zipfile
-import os
-import tempfile
-from fpdf import FPDF
 
 # Define the parameter descriptions
 parameter_descriptions = {
@@ -89,6 +85,63 @@ def process_data(uploaded_file, partner_id, buffer_percent, grade, district_digi
 
     return data_expanded, data_mapped
 
+def main():
+    st.title("Student ID Generator")
+    
+    uploaded_file = st.file_uploader("Upload an Excel file", type=["xlsx"])
+
+    if uploaded_file is not None:
+        st.write("File uploaded successfully!")
+        
+        partner_id = st.number_input("Partner ID", min_value=0, value=0)
+        buffer_percent = st.number_input("Buffer (%)", min_value=0.0, max_value=100.0, value=30.0)
+        grade = st.number_input("Grade", min_value=1, value=1)
+        district_digits = st.number_input("District ID Digits", min_value=1, value=2)
+        block_digits = st.number_input("Block ID Digits", min_value=1, value=2)
+        school_digits = st.number_input("School ID Digits", min_value=1, value=3)
+        student_digits = st.number_input("Student ID Digits", min_value=1, value=4)
+        
+        selected_param = st.selectbox("Select Parameter Set", list(parameter_mapping.keys()))
+        st.write(parameter_descriptions[selected_param])
+
+        if st.button("Generate IDs"):
+            data_expanded, data_mapped = process_data(uploaded_file, partner_id, buffer_percent, grade, district_digits, block_digits, school_digits, student_digits, selected_param)
+
+            # Display results
+            st.write("Generated Student IDs:")
+            st.dataframe(data_expanded[['School_ID', 'Student_IDs']])
+            
+            st.write("Expanded Data with Student Numbers:")
+            st.dataframe(data_expanded[['School_ID', 'Student_IDs', 'student_no']])
+            
+            st.write("Generated Custom IDs:")
+            st.dataframe(data_expanded[['Student_IDs', 'Custom_ID']])
+            
+            # Provide download links for the generated files
+            towrite1 = io.BytesIO()
+            towrite2 = io.BytesIO()
+            with pd.ExcelWriter(towrite1, engine='xlsxwriter') as writer:
+                data_expanded.to_excel(writer, index=False)
+            with pd.ExcelWriter(towrite2, engine='xlsxwriter') as writer:
+                data_mapped.to_excel(writer, index=False)
+            
+            towrite1.seek(0)
+            towrite2.seek(0)
+            
+            st.download_button(label="Download Student IDs Excel", data=towrite1, file_name="Student_Ids.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+            st.download_button(label="Download Mapped Student IDs Excel", data=towrite2, file_name="Student_Ids_Mapped.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+
+if __name__ == "__main__":
+    main()
+
+import zipfile
+import os
+import tempfile
+import io
+import streamlit as st
+import pandas as pd
+from fpdf import FPDF
+
 # Function to create the attendance list PDF
 def create_attendance_pdf(pdf, column_widths, column_names, image_path, info_values, df):
     pdf.add_page()
@@ -145,128 +198,113 @@ def create_attendance_pdf(pdf, column_widths, column_names, image_path, info_val
     pdf.cell(info_cell_width, 5, f"BLOCK: {info_labels['BLOCK']}", border='LR', ln=1)
     pdf.cell(info_cell_width, 5, f"SCHOOL NAME: {info_labels['SCHOOL NAME']}", border='LR', ln=1)
     pdf.cell(info_cell_width, 5, f"CLASS: {info_labels['CLASS']}", border='LR', ln=1)
-    pdf.cell(info_cell_width, 5, f"SECTION: {info_labels['SECTION']}                                                                                                                                                                             NO OF STUDENTS : ____________________", border='LR', ln=1)
+    pdf.cell(info_cell_width, 5, f"SECTION: {info_labels['SECTION']}", border='LR', ln=1)
 
-    # Add the table headers
-    pdf.set_font('Arial', 'B', 7)
-    for col in column_names:
-        pdf.cell(column_widths[col], 7, col, border=1, align='C')
-    pdf.ln()
+    # Draw a border around the table header
+    pdf.set_font('Arial', 'B', 5.5)
+    table_cell_height = 10
 
-    # Add the table data
+    # Table Header
+    for col_name in column_names:
+        pdf.cell(column_widths[col_name], table_cell_height, col_name, border=1, align='C')
+    pdf.ln(table_cell_height)
+
+    # Table Rows (based on student_count)
     pdf.set_font('Arial', '', 7)
-    for index, row in df.iterrows():
-        for col in column_names:
-            pdf.cell(column_widths[col], 7, str(row[col]), border=1, align='C')
-        pdf.ln()
+    student_count = info_values.get('student_count', 0)  # Use 0 if 'student_count' is missing or not found
 
-# Streamlit UI
-st.title("Student ID Mapping and Attendance PDF Generator")
+    # Fill in the student IDs for the selected school code
+    student_ids = df[df['School Code'] == info_values.get('School Code', '')]['STUDENT ID'].tolist()
 
-# --- Part 1: ID Mapping ---
-st.header("Part 1: Student ID Mapping")
+    for i in range(student_count):
+        # Fill in S.NO column
+        pdf.cell(column_widths['S.NO'], table_cell_height, str(i + 1), border=1, align='C')
 
-uploaded_file = st.file_uploader("Choose an Excel file", type=["xlsx"])
+        # Fill in STUDENT ID column
+        student_id = student_ids[i]
+        pdf.cell(column_widths['STUDENT ID'], table_cell_height, str(student_id), border=1, align='C')
 
-if uploaded_file is not None:
-    st.success("Excel file uploaded successfully!")
+        # Fill in remaining columns with empty values
+        for col_name in column_names[2:]:  # Skip first two columns
+            pdf.cell(column_widths[col_name], table_cell_height, '', border=1, align='C')
 
-    st.sidebar.header("ID Mapping Parameters")
+        pdf.ln(table_cell_height)
 
-    partner_id = st.sidebar.text_input("Partner ID", "Enter Partner ID")
-    buffer_percent = st.sidebar.slider("Buffer Percentage", 0, 100, 20)
-    grade = st.sidebar.text_input("Grade", "Enter Grade")
-    district_digits = st.sidebar.slider("District ID Digits", 1, 5, 2)
-    block_digits = st.sidebar.slider("Block ID Digits", 1, 5, 2)
-    school_digits = st.sidebar.slider("School ID Digits", 1, 5, 2)
-    student_digits = st.sidebar.slider("Student Number Digits", 1, 5, 3)
+# Streamlit App
+def main():
+    st.title("Hello! This is CGs Attendance List PDF Generator")
 
-    selected_param = st.sidebar.selectbox("Select Parameter Set", list(parameter_mapping.keys()))
-    st.sidebar.markdown(f"**Parameter Description:** {parameter_descriptions[selected_param]}")
+    # Upload Excel and Image files
+    excel_file = st.file_uploader("Upload Excel file", type=["xlsx"])
+    image_file = st.file_uploader("Upload Image file", type=["png", "jpg", "jpeg"])
 
-    if st.button("Process and Download Excel"):
-        processed_data, data_mapped = process_data(
-            uploaded_file, partner_id, buffer_percent, grade,
-            district_digits, block_digits, school_digits, student_digits, selected_param
-        )
+    if excel_file and image_file:
+        # Read Excel file
+        df = pd.read_excel(data_mapped)
 
-        # Save processed data to Excel
-        output = io.BytesIO()
-        with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-            data_mapped.to_excel(writer, index=False, sheet_name="Mapped_Student_IDs")
-            writer.save()
+        # Process data
+        grouping_columns = [col for col in df.columns if col not in ['STUDENT ID'] and df[col].notna().any()]
+        grouped = df.groupby(grouping_columns).agg(student_count=('STUDENT ID', 'nunique')).reset_index()
 
-        # Save the Excel file
-        excel_filename = "Student_Ids_Mapped.xlsx"
-        st.download_button(
-            label="Download Mapped Excel",
-            data=output.getvalue(),
-            file_name=excel_filename,
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        )
+        if 'CLASS' in grouped.columns and grouped['CLASS'].astype(str).str.contains('\D').any():
+            grouped['CLASS'] = grouped['CLASS'].astype(str).str.extract('(\d+)')
 
-        # --- Part 2: PDF Generation ---
-        st.header("Part 2: Generate Attendance PDFs")
+        result = grouped.to_dict(orient='records')
 
-        if uploaded_file is not None:
-            school_data = pd.read_excel(output)  # Read from generated Excel file
+        # Convert image to a temporary file
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.png') as tmp_image_file:
+            tmp_image_file.write(image_file.read())
+            image_path = tmp_image_file.name
 
-            image_path = st.file_uploader("Upload School Logo", type=["png", "jpg", "jpeg"])
+        # Number of columns and column names for the table
+        column_names = ['S.NO', 'STUDENT ID', 'PASSCODE', 'STUDENT NAME', 'GENDER', 'TAB ID', 'SUBJECT 1 (PRESENT/ABSENT)', 'SUBJECT 2 (PRESENT/ABSENT)']
+        column_widths = {
+            'S.NO': 8,
+            'STUDENT ID': 18,
+            'PASSCODE': 18,
+            'STUDENT NAME': 61,
+            'GENDER': 15,
+            'TAB ID': 15,
+            'SUBJECT 1 (PRESENT/ABSENT)': 35,
+            'SUBJECT 2 (PRESENT/ABSENT)': 35
+        }
 
-            if image_path is not None:
-                st.success("Image uploaded successfully!")
+        if st.button("Click to Generate PDFs and Zip"):
+            # Create a temporary directory to save PDFs
+            with tempfile.TemporaryDirectory() as tmp_dir:
+                pdf_paths = []
 
-            temp_dir = tempfile.mkdtemp()
+                for record in result:
+                    school_code = record.get('School Code', 'default_code')
 
-            for school_code in school_data['School Code'].unique():
-                df_school = school_data[school_data['School Code'] == school_code]
-                student_count = len(df_school)
+                    # Create a PDF for each school
+                    pdf = FPDF(orientation='P', unit='mm', format='A4')
+                    pdf.set_left_margin(10)
+                    pdf.set_right_margin(10)
 
-                pdf = FPDF('P', 'mm', 'A4')
-                column_widths = {
-                    'S.No': 10,
-                    'STUDENT ID': 30,
-                    'GENDER': 15,
-                    'MOTHER NAME': 45,
-                    'FATHER NAME': 45,
-                    'ATTENDANCE STATUS': 45
-                }
-                column_names = list(column_widths.keys())
+                    create_attendance_pdf(pdf, column_widths, column_names, image_path, record, df)
 
-                info_values = {
-                    'PROJECT': "Project XYZ",
-                    'DISTRICT': df_school['District Name'].iloc[0],
-                    'BLOCK': df_school['Block Name'].iloc[0],
-                    'SCHOOL NAME': df_school['School Name'].iloc[0],
-                    'CLASS': df_school['Grade'].iloc[0],
-                    'SECTION': "A"
-                }
+                    # Save the PDF in the temporary directory
+                    pdf_path = os.path.join(tmp_dir, f'attendance_list_{school_code}.pdf')
+                    pdf.output(pdf_path)
+                    pdf_paths.append(pdf_path)
 
-                # First two columns filled with counts from 1 to student_count and Student IDs
-                df_pdf = pd.DataFrame({
-                    'S.No': list(range(1, student_count + 1)),
-                    'STUDENT ID': df_school['Roll_Number'].values,
-                    'GENDER': df_school['Gender'].values,
-                    'MOTHER NAME': [""] * student_count,
-                    'FATHER NAME': [""] * student_count,
-                    'ATTENDANCE STATUS': [""] * student_count
-                })
+                # Create a zip file containing all PDFs
+                zip_buffer = io.BytesIO()
+                with zipfile.ZipFile(zip_buffer, 'w') as zip_file:
+                    for pdf_path in pdf_paths:
+                        zip_file.write(pdf_path, os.path.basename(pdf_path))
 
-                create_attendance_pdf(pdf, column_widths, column_names, image_path, info_values, df_pdf)
+                # Provide download link for the zip file
+                st.download_button(
+                    label="Click to Download Zip File",
+                    data=zip_buffer.getvalue(),
+                    file_name="attendance_Sheets.zip",
+                    mime="application/zip"
+                )
 
-                pdf_file = f"{school_code}.pdf"
-                pdf_output_path = os.path.join(temp_dir, pdf_file)
-                pdf.output(pdf_output_path)
+            # Clean up temporary image file
+            os.remove(image_path)
 
-            # Create a zip file with all the PDFs
-            zip_buffer = io.BytesIO()
-            with zipfile.ZipFile(zip_buffer, "w") as zip_file:
-                for pdf_file in os.listdir(temp_dir):
-                    zip_file.write(os.path.join(temp_dir, pdf_file), pdf_file)
-
-            st.download_button(
-                label="Download All PDFs",
-                data=zip_buffer.getvalue(),
-                file_name="Attendance_PDFs.zip",
-                mime="application/zip"
-            )
+if __name__ == "__main__":
+    main()
