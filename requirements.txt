@@ -2,3 +2,5 @@ fpdf
 openpyxl
 pandas
 streamlit
+io
+tempfile
