@@ -6,7 +6,7 @@ import pandas as pd
 from fpdf import FPDF
 
 # Function to create the attendance list PDF
-def create_attendance_pdf(pdf, column_widths, column_names, image_path, info_values, student_ids):
+def create_attendance_pdf(pdf, column_widths, column_names, image_path, info_values, df):
     pdf.add_page()
 
     # Page width and margins
@@ -73,14 +73,24 @@ def create_attendance_pdf(pdf, column_widths, column_names, image_path, info_val
     pdf.ln(table_cell_height)
 
     # Table Rows (based on student_count)
-    pdf.set_font('Arial', '', 10)  # Use 0 if 'student_count' is missing or not found
+    pdf.set_font('Arial', '', 10)
+    student_count = info_values.get('student_count', 0)  # Use 0 if 'student_count' is missing or not found
+
+    # Fill in the student IDs for the selected school code
+    student_ids = df[df['School Code'] == info_values.get('SCHOOL NAME', '')]['STUDENT ID'].tolist()
+
     for i in range(student_count):
-        for col_name in column_names:
-            if col_name == 'STUDENT ID':
-                student_id = student_ids[i] if i < len(student_ids) else ''
-                pdf.cell(column_widths[col_name], table_cell_height, student_id, border=1, align='C')
-            else:
-                pdf.cell(column_widths[col_name], table_cell_height, '', border=1, align='C')
+        # Fill in S.NO column
+        pdf.cell(column_widths['S.NO'], table_cell_height, str(i + 1), border=1, align='C')
+
+        # Fill in STUDENT ID column
+        student_id = student_ids[i] if i < len(student_ids) else ''
+        pdf.cell(column_widths['STUDENT ID'], table_cell_height, student_id, border=1, align='C')
+
+        # Fill in remaining columns with empty values
+        for col_name in column_names[2:]:  # Skip first two columns
+            pdf.cell(column_widths[col_name], table_cell_height, '', border=1, align='C')
+
         pdf.ln(table_cell_height)
 
 # Streamlit App
@@ -95,15 +105,9 @@ def main():
         # Read Excel file
         df = pd.read_excel(excel_file)
 
-        # Determine column names for student IDs based on common names
-        student_id_column = next(
-            (col for col in df.columns if 'id' in col.lower() or 'number' in col.lower()), 
-            'STUDENT ID'
-        )
-
         # Process data
-        grouping_columns = [col for col in df.columns if col.lower() not in [student_id_column.lower()] and df[col].notna().any()]
-        grouped = df.groupby(grouping_columns).agg(student_count=(student_id_column, 'nunique')).reset_index()
+        grouping_columns = [col for col in df.columns if col not in ['STUDENT ID'] and df[col].notna().any()]
+        grouped = df.groupby(grouping_columns).agg(student_count=('STUDENT ID', 'nunique')).reset_index()
 
         if 'CLASS' in grouped.columns and grouped['CLASS'].astype(str).str.contains('\D').any():
             grouped['CLASS'] = grouped['CLASS'].astype(str).str.extract('(\d+)')
@@ -136,17 +140,13 @@ def main():
             # Find the selected record
             selected_record = next(record for record in result if record.get('SCHOOL NAME') == selected_school_code)
 
-            # Fetch student data for the selected school code
-            students_df = df[df['SCHOOL NAME'] == selected_school_code]
-            student_data = students_df[[student_id_column]].rename(columns={student_id_column: 'STUDENT ID'}).to_dict(orient='records')
-
             # Create a temporary file to save the PDF
             with tempfile.NamedTemporaryFile(delete=False, suffix='.pdf') as tmp_pdf_file:
                 pdf = FPDF(orientation='P', unit='mm', format='A4')
                 pdf.set_left_margin(10)
                 pdf.set_right_margin(10)
 
-                create_attendance_pdf(pdf, column_widths, column_names, image_path, selected_record, student_data)
+                create_attendance_pdf(pdf, column_widths, column_names, image_path, selected_record, df)
 
                 # Save PDF to the temporary file
                 pdf.output(tmp_pdf_file.name)
