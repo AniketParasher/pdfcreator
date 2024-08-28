@@ -6,7 +6,7 @@ import pandas as pd
 from fpdf import FPDF
 
 # Function to create the attendance list PDF
-def create_attendance_pdf(pdf, column_widths, column_names, image_path, info_values):
+def create_attendance_pdf(pdf, column_widths, column_names, image_path, info_values, df):
     pdf.add_page()
 
     # Page width and margins
@@ -75,9 +75,22 @@ def create_attendance_pdf(pdf, column_widths, column_names, image_path, info_val
     # Table Rows (based on student_count)
     pdf.set_font('Arial', '', 10)
     student_count = info_values.get('student_count', 0)  # Use 0 if 'student_count' is missing or not found
+
+    # Fill in the student IDs for the selected school code
+    student_ids = df[df['School Code'] == info_values.get('SCHOOL NAME', '')]['STUDENT ID'].tolist()
+
     for i in range(student_count):
-        for col_name in column_names:
+        # Fill in S.NO column
+        pdf.cell(column_widths['S.NO'], table_cell_height, str(i + 1), border=1, align='C')
+
+        # Fill in STUDENT ID column
+        student_id = student_ids[i] if i < len(student_ids) else ''
+        pdf.cell(column_widths['STUDENT ID'], table_cell_height, student_id, border=1, align='C')
+
+        # Fill in remaining columns with empty values
+        for col_name in column_names[2:]:  # Skip first two columns
             pdf.cell(column_widths[col_name], table_cell_height, '', border=1, align='C')
+
         pdf.ln(table_cell_height)
 
 # Streamlit App
@@ -133,7 +146,7 @@ def main():
                 pdf.set_left_margin(10)
                 pdf.set_right_margin(10)
 
-                create_attendance_pdf(pdf, column_widths, column_names, image_path, selected_record)
+                create_attendance_pdf(pdf, column_widths, column_names, image_path, selected_record, df)
 
                 # Save PDF to the temporary file
                 pdf.output(tmp_pdf_file.name)
