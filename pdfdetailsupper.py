@@ -2,9 +2,10 @@ import streamlit as st
 import pandas as pd
 from fpdf import FPDF
 import io
+import tempfile
 
 # Function to create the attendance list PDF
-def create_attendance_pdf(pdf, column_widths, column_names, image_stream, info_values):
+def create_attendance_pdf(pdf, column_widths, column_names, image_path, info_values):
     pdf.add_page()
 
     # Page width and margins
@@ -29,7 +30,7 @@ def create_attendance_pdf(pdf, column_widths, column_names, image_stream, info_v
     pdf.cell(merged_cell_width, 10, '(PLEASE FILL ALL THE DETAILS IN BLOCK LETTERS)', border='LBR', align='C', ln=1)
 
     # Add the image in the top-right corner of the bordered cell
-    pdf.image(image_stream, x=pdf.get_x() + merged_cell_width - 30, y=pdf.get_y() - 18, w=28, h=12)  # Adjust position and size as needed
+    pdf.image(image_path, x=pdf.get_x() + merged_cell_width - 30, y=pdf.get_y() - 18, w=28, h=12)  # Adjust position and size as needed
 
     # Add the additional information cell below the "ATTENDANCE LIST" cell
     pdf.set_font('Arial', 'B', 6)
@@ -99,37 +100,53 @@ def main():
 
         result = grouped.to_dict(orient='records')
 
-        # Convert image to a stream for fpdf
-        image_stream = io.BytesIO(image_file.read())
+        # Convert image to a temporary file
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.png') as tmp_image_file:
+            tmp_image_file.write(image_file.read())
+            image_path = tmp_image_file.name
 
-        # Generate PDFs
-        pdf_files = []
-        for record in result:
+        # Number of columns and column names for the table
+        column_names = ['S.NO', 'STUDENT ID', 'PASSCODE', 'STUDENT NAME', 'GENDER', 'TAB ID', 'SUBJECT 1 (PRESENT/ABSENT)', 'SUBJECT 2 (PRESENT/ABSENT)']
+        column_widths = {
+            'S.NO': 8,
+            'STUDENT ID': 18,
+            'PASSCODE': 18,
+            'STUDENT NAME': 61,
+            'GENDER': 15,
+            'TAB ID': 15,
+            'SUBJECT 1 (PRESENT/ABSENT)': 35,
+            'SUBJECT 2 (PRESENT/ABSENT)': 35
+        }
+
+        # Generate school codes list for dropdown
+        school_codes = [record.get('SCHOOL NAME', 'default_code') for record in result]
+        selected_school_code = st.selectbox("Select School Code", options=school_codes)
+
+        if st.button("Generate PDF"):
+            # Find the selected record
+            selected_record = next(record for record in result if record.get('SCHOOL NAME') == selected_school_code)
+
             pdf = FPDF(orientation='P', unit='mm', format='A4')
             pdf.set_left_margin(10)
             pdf.set_right_margin(10)
 
-            school_code = record.get('SCHOOL NAME', 'default_code')  # Use 'default_code' if 'SCHOOL NAME' is missing
-            create_attendance_pdf(pdf, column_widths, column_names, image_stream, record)
+            create_attendance_pdf(pdf, column_widths, column_names, image_path, selected_record)
 
-            # Save the PDF to a stream
+            # Save the PDF to a stream for download
             pdf_stream = io.BytesIO()
             pdf.output(pdf_stream)
             pdf_stream.seek(0)
 
-            # Save to a file for download
-            pdf_files.append((f'attendance_list_{school_code}.pdf', pdf_stream))
-            if school_code == '4019':
-               break
-
-        # Provide download links for generated PDFs
-        for filename, pdf_stream in pdf_files:
+            # Provide download link for the generated PDF
             st.download_button(
-                label=f"Download {filename}",
+                label=f"Download Attendance List for {selected_school_code}",
                 data=pdf_stream,
-                file_name=filename,
+                file_name=f'attendance_list_{selected_school_code}.pdf',
                 mime="application/pdf"
             )
+
+        # Clean up temporary image file
+        os.remove(image_path)
 
 if __name__ == "__main__":
     main()
