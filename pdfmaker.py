@@ -1,5 +1,6 @@
 import streamlit as st
 from fpdf import FPDF
+import os
 
 # Function to create the attendance list PDF
 def create_attendance_pdf(pdf, column_widths, column_names, image_path):
@@ -90,11 +91,17 @@ column_widths = {
 # Generate PDF button
 if st.button("Generate PDF"):
     if uploaded_image:
+        # Save the uploaded image to a temporary file
+        temp_image_path = os.path.join("temp_image.png")
+        with open(temp_image_path, "wb") as f:
+            f.write(uploaded_image.getbuffer())
+        
+        # Create PDF
         pdf = FPDF(orientation='P', unit='mm', format='A4')
         pdf.set_left_margin(10)
         pdf.set_right_margin(10)
 
-        create_attendance_pdf(pdf, column_widths, column_names, uploaded_image)
+        create_attendance_pdf(pdf, column_widths, column_names, temp_image_path)
 
         # Save the PDF to a file
         output_pdf = 'attendance_list_image.pdf'
@@ -103,5 +110,8 @@ if st.button("Generate PDF"):
         # Download the generated PDF
         with open(output_pdf, 'rb') as f:
             st.download_button("Download PDF", f, file_name=output_pdf)
+
+        # Clean up the temporary image file
+        os.remove(temp_image_path)
     else:
         st.warning("Please upload an image to include in the PDF.")
