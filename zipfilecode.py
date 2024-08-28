@@ -96,7 +96,7 @@ def create_attendance_pdf(pdf, column_widths, column_names, image_path, info_val
 
 # Streamlit App
 def main():
-    st.title("Attendance List PDF Generator")
+    st.title("Hello! This is CGs Attendance List PDF Generator")
 
     # Upload Excel and Image files
     excel_file = st.file_uploader("Upload Excel file", type=["xlsx"])
@@ -133,7 +133,7 @@ def main():
             'SUBJECT 2 (PRESENT/ABSENT)': 35
         }
 
-        if st.button("Generate PDFs and Download Zip"):
+        if st.button("Click to Generate PDFs and Zip"):
             # Create a temporary directory to save PDFs
             with tempfile.TemporaryDirectory() as tmp_dir:
                 pdf_paths = []
@@ -161,7 +161,7 @@ def main():
 
                 # Provide download link for the zip file
                 st.download_button(
-                    label="Download All Attendance Lists",
+                    label="Click to Download Zip File",
                     data=zip_buffer.getvalue(),
                     file_name="attendance_lists.zip",
                     mime="application/zip"
