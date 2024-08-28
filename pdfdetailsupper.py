@@ -1,8 +1,9 @@
+import os
+import tempfile
+import io
 import streamlit as st
 import pandas as pd
 from fpdf import FPDF
-import io
-import tempfile
 
 # Function to create the attendance list PDF
 def create_attendance_pdf(pdf, column_widths, column_names, image_path, info_values):
@@ -126,16 +127,20 @@ def main():
             # Find the selected record
             selected_record = next(record for record in result if record.get('SCHOOL NAME') == selected_school_code)
 
-            pdf = FPDF(orientation='P', unit='mm', format='A4')
-            pdf.set_left_margin(10)
-            pdf.set_right_margin(10)
+            # Create a temporary file to save the PDF
+            with tempfile.NamedTemporaryFile(delete=False, suffix='.pdf') as tmp_pdf_file:
+                pdf = FPDF(orientation='P', unit='mm', format='A4')
+                pdf.set_left_margin(10)
+                pdf.set_right_margin(10)
 
-            create_attendance_pdf(pdf, column_widths, column_names, image_path, selected_record)
+                create_attendance_pdf(pdf, column_widths, column_names, image_path, selected_record)
 
-            # Save the PDF to a stream for download
-            pdf_stream = io.BytesIO()
-            pdf.output(pdf_stream)
-            pdf_stream.seek(0)
+                # Save PDF to the temporary file
+                pdf.output(tmp_pdf_file.name)
+                
+                # Read the PDF into a BytesIO stream for download
+                with open(tmp_pdf_file.name, 'rb') as pdf_file:
+                    pdf_stream = io.BytesIO(pdf_file.read())
 
             # Provide download link for the generated PDF
             st.download_button(
@@ -145,8 +150,9 @@ def main():
                 mime="application/pdf"
             )
 
-        # Clean up temporary image file
-        os.remove(image_path)
+            # Clean up temporary image and PDF files
+            os.remove(image_path)
+            os.remove(tmp_pdf_file.name)
 
 if __name__ == "__main__":
     main()
