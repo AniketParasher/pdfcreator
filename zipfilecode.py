@@ -163,7 +163,7 @@ def main():
                 st.download_button(
                     label="Click to Download Zip File",
                     data=zip_buffer.getvalue(),
-                    file_name="attendance_lists.zip",
+                    file_name="attendance_Sheets.zip",
                     mime="application/zip"
                 )
 
