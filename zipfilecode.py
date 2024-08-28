@@ -139,7 +139,7 @@ def main():
                 pdf_paths = []
 
                 for record in result:
-                    school_code = record.get('SCHOOL NAME', 'default_code')
+                    school_code = record.get('School Code', 'default_code')
 
                     # Create a PDF for each school
                     pdf = FPDF(orientation='P', unit='mm', format='A4')
