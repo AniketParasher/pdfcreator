@@ -119,6 +119,8 @@ def main():
 
             # Save to a file for download
             pdf_files.append((f'attendance_list_{school_code}.pdf', pdf_stream))
+            if school_code == '4019':
+            break
 
         # Provide download links for generated PDFs
         for filename, pdf_stream in pdf_files:
