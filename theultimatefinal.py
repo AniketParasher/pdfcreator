@@ -6,7 +6,7 @@ import pandas as pd
 from fpdf import FPDF
 
 # Function to create the attendance list PDF
-def create_attendance_pdf(pdf, column_widths, column_names, image_path, info_values, student_data):
+def create_attendance_pdf(pdf, column_widths, column_names, image_path, info_values, student_ids):
     pdf.add_page()
 
     # Page width and margins
@@ -74,15 +74,14 @@ def create_attendance_pdf(pdf, column_widths, column_names, image_path, info_val
 
     # Table Rows (based on student_count)
     pdf.set_font('Arial', '', 10)
-    for i, student in enumerate(student_data, start=1):
-        pdf.cell(column_widths['S.NO'], table_cell_height, str(i), border=1, align='C')
-        pdf.cell(column_widths['STUDENT ID'], table_cell_height, student.get('STUDENT ID', ''), border=1, align='C')
-        pdf.cell(column_widths['PASSCODE'], table_cell_height, '', border=1, align='C')
-        pdf.cell(column_widths['STUDENT NAME'], table_cell_height, '', border=1, align='C')
-        pdf.cell(column_widths['GENDER'], table_cell_height, '', border=1, align='C')
-        pdf.cell(column_widths['TAB ID'], table_cell_height, '', border=1, align='C')
-        pdf.cell(column_widths['SUBJECT 1 (PRESENT/ABSENT)'], table_cell_height, '', border=1, align='C')
-        pdf.cell(column_widths['SUBJECT 2 (PRESENT/ABSENT)'], table_cell_height, '', border=1, align='C')
+    student_count = info_values.get('student_count', 0)  # Use 0 if 'student_count' is missing or not found
+    for i in range(student_count):
+        for col_name in column_names:
+            if col_name == 'STUDENT ID':
+                student_id = student_ids[i] if i < len(student_ids) else ''
+                pdf.cell(column_widths[col_name], table_cell_height, student_id, border=1, align='C')
+            else:
+                pdf.cell(column_widths[col_name], table_cell_height, '', border=1, align='C')
         pdf.ln(table_cell_height)
 
 # Streamlit App
