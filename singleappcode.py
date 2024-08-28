@@ -92,7 +92,7 @@ def process_data(uploaded_file, partner_id, buffer_percent, grade, district_digi
 
     return data_expanded, data_mapped
 
-def id_generator:
+def id_generator():
     st.title("Student ID Generator")
     
     uploaded_file = st.file_uploader("Upload an Excel file", type=["xlsx"])
