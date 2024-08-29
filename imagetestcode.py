@@ -162,8 +162,5 @@ def main():
                     mime="application/zip"
                 )
 
-            # Clean up temporary image file
-            os.remove(image_path)
-
 if __name__ == "__main__":
     main()
