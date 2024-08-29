@@ -100,7 +100,7 @@ def main():
 
     # Upload Excel and Image files
     excel_file = st.file_uploader("Upload Excel file", type=["xlsx"])
-    image_file = "https://raw.githubusercontent.com/AniketParasher/pdfcreator/main/cg.png"
+    image_file = st.file_uploader("Upload Image file", type=["png", "jpg", "jpeg"])
 
     if excel_file and image_file:
         # Read Excel file
