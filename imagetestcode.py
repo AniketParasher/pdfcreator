@@ -102,7 +102,7 @@ def main():
     excel_file = st.file_uploader("Upload Excel file", type=["xlsx"])
     image_path = "https://raw.githubusercontent.com/AniketParasher/pdfcreator/main/cg.png"
 
-    if excel_file and image_file:
+    if excel_file and image_path:
         # Read Excel file
         df = pd.read_excel(excel_file)
 
